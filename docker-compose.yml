@@ -1,0 +1,30 @@
+services:
+  proxy:
+    build: ./proxy
+    ports:
+      - "8080:8080"
+    links:
+      - vault
+    volumes:
+      - $HOME/.config/fitm/dotmitmproxy:/root/.mitmproxy
+    environment:
+      VAULT_ADDRESS: http://vault:8200
+
+  admin:
+    build: ./admin
+    ports:
+      - "4000:4000"
+    links:
+      - vault
+    environment:
+      VAULT_TOKEN: myroot
+      VAULT_ADDRESS: http://vault:8200
+
+  vault:
+    image: vault:1.9.4
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: myroot
