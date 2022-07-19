@@ -14,12 +14,6 @@ Tools like 1password are awesome to share credentials, but bad actors could be a
 
 I wanted to create a way to share access to services in a controlled manner, without sharing the credentials. Something that could grant temporary access to others, without allowing them to access in the future and without the need of constant password rotations.
 
-## Quick start
-
-```bash
-sh -c "$(curl -fsSL https://raw.github.com/acroca/fitm/master/tools/quick_start.sh)"
-```
-
 ## Features
 
 - HTTP proxy

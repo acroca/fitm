@@ -1,38 +1,47 @@
-package main
+package fitm
 
 import (
 	"errors"
 	"fmt"
+	"log"
 
 	vault "github.com/hashicorp/vault/api"
 )
 
-type VaultClient struct {
+type Repository struct {
 	client *vault.Client
 }
 
-func newVaultClient(client *vault.Client) *VaultClient {
-	return &VaultClient{
+func newVaultRepository(address, token string) *Repository {
+	config := vault.DefaultConfig()
+	config.Address = address
+	client, err := vault.NewClient(config)
+	if err != nil {
+		log.Fatalf("unable to initialize Vault client: %v", err)
+	}
+	client.SetToken(token)
+
+	return &Repository{
 		client: client,
 	}
 }
 
-func (c *VaultClient) ListBuckets() ([]string, error) {
+func (c *Repository) ListBuckets() ([]string, error) {
 	res, err := c.client.Logical().List("secret/metadata/buckets")
 	if err != nil {
 		return nil, err
 	}
-	if res == nil {
-		return nil, errors.New("Path not found")
-	}
 	secrets := []string{}
+	if res == nil {
+		return secrets, nil
+	}
 	for _, k := range res.Data["keys"].([]interface{}) {
 		secrets = append(secrets, k.(string))
 	}
-	return []string{}, nil
+	return secrets, nil
 }
 
-func (c *VaultClient) BucketExists(id string) (bool, error) {
+func (c *Repository) BucketExists(id string) (bool, error) {
 	res, err := c.client.Logical().Read("secret/metadata/buckets/" + id)
 	if err != nil {
 		return false, err
@@ -43,7 +52,7 @@ func (c *VaultClient) BucketExists(id string) (bool, error) {
 	return true, nil
 }
 
-func (c *VaultClient) DeleteBucket(id string) error {
+func (c *Repository) DeleteBucket(id string) error {
 	_, err := c.client.Logical().Delete("secret/metadata/buckets/" + id)
 	if err != nil {
 		return err
@@ -55,7 +64,7 @@ func (c *VaultClient) DeleteBucket(id string) error {
 	return nil
 }
 
-func (c *VaultClient) CreateBucket(id string) error {
+func (c *Repository) CreateBucket(id string) error {
 	_, err := c.client.Logical().Write("secret/data/buckets/"+id, map[string]interface{}{
 		"options": map[string]int{
 			"cas": 0,
@@ -85,7 +94,7 @@ func (c *VaultClient) CreateBucket(id string) error {
 	return nil
 }
 
-func (c *VaultClient) ListUsers() ([]string, error) {
+func (c *Repository) ListUsers() ([]string, error) {
 	res, err := c.client.Logical().List("auth/token/roles")
 	if err != nil {
 		return nil, err
@@ -100,7 +109,7 @@ func (c *VaultClient) ListUsers() ([]string, error) {
 	return []string{}, nil
 }
 
-func (c *VaultClient) UserExists(id string) (bool, error) {
+func (c *Repository) UserExists(id string) (bool, error) {
 	res, err := c.client.Logical().Read("auth/token/roles/" + id)
 	if err != nil {
 		return false, err
@@ -111,7 +120,7 @@ func (c *VaultClient) UserExists(id string) (bool, error) {
 	return true, nil
 }
 
-func (c *VaultClient) DeleteUser(id string) error {
+func (c *Repository) DeleteUser(id string) error {
 	_, err := c.client.Logical().Delete("auth/token/roles/" + id)
 	if err != nil {
 		return err
@@ -119,7 +128,7 @@ func (c *VaultClient) DeleteUser(id string) error {
 	return nil
 }
 
-func (c *VaultClient) CreateUser(id string, tokens []string, buckets []string) error {
+func (c *Repository) CreateUser(id string, tokens []string, buckets []string) error {
 	policies := []string{"default"}
 	for _, bucket := range buckets {
 		policies = append(policies, "b."+bucket)
