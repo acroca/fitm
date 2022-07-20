@@ -1,6 +1,7 @@
 package fitm
 
 import (
+	_ "embed"
 	"os"
 	"os/exec"
 	"path"
@@ -10,6 +11,9 @@ import (
 )
 
 var (
+	//go:embed docker-compose.yml.tmpl
+	dockerComposeTemplate string
+
 	configDir             = path.Join(os.Getenv("HOME"), ".config", "fitm")
 	dockerComposeFileName = path.Join(configDir, "docker-compose.yml")
 )
@@ -24,7 +28,7 @@ func InitAction(c *cli.Context) error {
 		return err
 	}
 
-	tpl, err := template.ParseGlob("./*.tmpl")
+	tpl, err := template.New("docker_compose.yml").Parse(dockerComposeTemplate)
 	if err != nil {
 		return err
 	}

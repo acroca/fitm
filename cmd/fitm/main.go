@@ -145,39 +145,10 @@ func main() {
 						Name:   "delete",
 						Usage:  "delete a user.",
 						Action: fitm.DeleteUsersAction,
-					},
-				},
-			},
-			{
-				Name:  "acl",
-				Usage: "Grant or remove access to buckets to specific users",
-				Subcommands: []*cli.Command{
-					{
-						Name:   "grant",
-						Usage:  "grant access.",
-						Action: todoAction,
 						Flags: []cli.Flag{
 							&cli.StringFlag{
-								Name:     "user",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:     "bucket",
-								Required: true,
-							},
-						},
-					},
-					{
-						Name:   "revoke",
-						Usage:  "revoke access.",
-						Action: todoAction,
-						Flags: []cli.Flag{
-							&cli.StringFlag{
-								Name:     "user",
-								Required: true,
-							},
-							&cli.StringFlag{
-								Name:     "bucket",
+								Name:     "id",
+								Usage:    "User ID",
 								Required: true,
 							},
 						},
