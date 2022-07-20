@@ -1,10 +1,10 @@
-name: goreleaser
+name: docker
 on:
   push:
     tags:
       - 'v*'
 jobs:
-  goreleaser:
+  docker:
     runs-on: ubuntu-latest
     steps:
       -
