@@ -16,7 +16,7 @@ func ListUsersAction(c *cli.Context) error {
 	if len(users) == 0 {
 		fmt.Println("No users found.")
 	} else {
-		fmt.Println("users:")
+		fmt.Println("Users:")
 
 		for _, bucket := range users {
 			fmt.Printf("* %v", bucket)

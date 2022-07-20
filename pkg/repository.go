@@ -106,7 +106,7 @@ func (c *Repository) ListUsers() ([]string, error) {
 	for _, k := range res.Data["keys"].([]interface{}) {
 		secrets = append(secrets, k.(string))
 	}
-	return []string{}, nil
+	return secrets, nil
 }
 
 func (c *Repository) UserExists(id string) (bool, error) {
