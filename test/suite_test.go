@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -16,7 +17,8 @@ import (
 )
 
 type Suite struct {
-	t *testing.T
+	t    *testing.T
+	isCI bool
 
 	vaultContainer string
 	localVaultAddr string
@@ -24,12 +26,13 @@ type Suite struct {
 	mitmContainer string
 	mitmPort      string
 
-	fakeServerPort int
+	fakeServerAddr string
 }
 
 func newSuite(t *testing.T) *Suite {
 	suite := &Suite{
-		t: t,
+		t:    t,
+		isCI: os.Getenv("CI") == "true",
 	}
 	suite.network()
 	suite.runVault()
@@ -58,41 +61,60 @@ func (s *Suite) httpClient() *http.Client {
 
 func (s *Suite) teardown() {
 	s.cmd(s.t, "docker rm -f "+s.vaultContainer+" "+s.mitmContainer)
-	s.cmd(s.t, "docker network rm fitm_test")
+	if !s.isCI {
+		s.cmd(s.t, "docker network rm fitm_test")
+	}
 }
 
 func (s *Suite) network() {
-	s.cmd(s.t, "docker network create fitm_test")
+	if !s.isCI {
+		s.cmd(s.t, "docker network create fitm_test")
+	}
 }
 
 func (s *Suite) runVault() {
-	s.vaultContainer = s.cmd(s.t, "docker run --name fitm_test_vault --network fitm_test -d --cap-add=IPC_LOCK -p 8200 -e VAULT_DEV_ROOT_TOKEN_ID=myroot vault:1.9.4")
+	if s.isCI {
+		s.vaultContainer = s.cmd(s.t, "docker run --name fitm_test_vault -d --cap-add=IPC_LOCK --network host -e VAULT_DEV_ROOT_TOKEN_ID=myroot vault:1.9.4")
+		s.localVaultAddr = "http://localhost:8200"
+	} else {
+		s.vaultContainer = s.cmd(s.t, "docker run --name fitm_test_vault -d --cap-add=IPC_LOCK --network fitm_test -p 8200 -e VAULT_DEV_ROOT_TOKEN_ID=myroot vault:1.9.4")
 
-	vaultAddr := s.cmd(s.t, "docker port "+s.vaultContainer+" 8200")
-	mappedVaultPort := strings.Split(string(vaultAddr), ":")[1]
+		vaultAddr := s.cmd(s.t, "docker port "+s.vaultContainer+" 8200")
+		firstLine := strings.Split(string(vaultAddr), "\n")[0]
+		mappedVaultPort := strings.Split(firstLine, ":")[1]
 
-	s.localVaultAddr = fmt.Sprintf("http://localhost:%v", mappedVaultPort)
+		s.localVaultAddr = fmt.Sprintf("http://localhost:%v", mappedVaultPort)
+	}
 }
 
 func (s *Suite) runMitm() {
 	mitmImage := s.cmd(s.t, "docker build ../proxy -q")
-	s.mitmContainer = s.cmd(s.t, "docker run -d -p 8080 --add-host=host.docker.internal:host-gateway --network fitm_test -e VAULT_ADDRESS=http://fitm_test_vault:8200 "+mitmImage)
 
-	defer func() {
-	}()
+	if s.isCI {
+		s.mitmContainer = s.cmd(s.t, "docker run -d --network host -e VAULT_ADDRESS=http://localhost:8200 "+mitmImage)
+		s.mitmPort = "8080"
+	} else {
+		mitmImage := s.cmd(s.t, "docker build ../proxy -q")
+		s.mitmContainer = s.cmd(s.t, "docker run -d --add-host=fake-server:host-gateway --network fitm_test -p 8080 -e VAULT_ADDRESS=http://fitm_test_vault:8200 "+mitmImage)
 
-	mitmAddr := s.cmd(s.t, "docker port "+s.mitmContainer+" 8080")
-	s.mitmPort = strings.Split(string(mitmAddr), ":")[1]
+		mitmAddr := s.cmd(s.t, "docker port "+s.mitmContainer+" 8080")
+		firstLine := strings.Split(string(mitmAddr), "\n")[0]
+		s.mitmPort = strings.Split(firstLine, ":")[1]
+	}
 }
 
 func (s *Suite) runFakeServer() {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(s.t, err)
-	s.fakeServerPort = listener.Addr().(*net.TCPAddr).Port
+	port := listener.Addr().(*net.TCPAddr).Port
+
+	if s.isCI {
+		s.fakeServerAddr = fmt.Sprintf("http://localhost:%v", port)
+	} else {
+		s.fakeServerAddr = fmt.Sprintf("http://fake-server:%v", port)
+	}
 
 	go http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.t.Log(r.Header)
-
 		number := 0
 
 		currentCookie, err := r.Cookie("test-cookie")

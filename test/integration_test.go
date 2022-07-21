@@ -1,7 +1,6 @@
 package test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -22,7 +21,7 @@ func TestHappyPath(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	client := suite.httpClient()
 
-	res, err := client.Get(fmt.Sprintf("http://host.docker.internal:%v", suite.fakeServerPort))
+	res, err := client.Get(suite.fakeServerAddr)
 	require.NoError(t, err)
 	require.Equal(t, 200, res.StatusCode)
 	first := body(t, res)
@@ -30,7 +29,7 @@ func TestHappyPath(t *testing.T) {
 		require.NotEqual(t, "test-cookie", cookie.Name)
 	}
 
-	res, err = client.Get(fmt.Sprintf("http://host.docker.internal:%v", suite.fakeServerPort))
+	res, err = client.Get(suite.fakeServerAddr)
 	require.NoError(t, err)
 	require.Equal(t, 200, res.StatusCode)
 	second := body(t, res)
