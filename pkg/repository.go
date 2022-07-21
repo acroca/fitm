@@ -12,7 +12,7 @@ type Repository struct {
 	client *vault.Client
 }
 
-func newVaultRepository(address, token string) *Repository {
+func NewVaultRepository(address, token string) *Repository {
 	config := vault.DefaultConfig()
 	config.Address = address
 	client, err := vault.NewClient(config)

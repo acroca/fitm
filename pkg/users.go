@@ -7,7 +7,7 @@ import (
 )
 
 func ListUsersAction(c *cli.Context) error {
-	repo := newVaultRepository(c.String("vault_address"), c.String("vault_token"))
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
 
 	users, err := repo.ListUsers()
 	if err != nil {
@@ -27,7 +27,7 @@ func ListUsersAction(c *cli.Context) error {
 }
 
 func CreateUsersAction(c *cli.Context) error {
-	repo := newVaultRepository(c.String("vault_address"), c.String("vault_token"))
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
 
 	err := repo.CreateUser(c.String("id"), c.StringSlice("token"), c.StringSlice("bucket"))
 	if err != nil {
@@ -38,7 +38,7 @@ func CreateUsersAction(c *cli.Context) error {
 }
 
 func DeleteUsersAction(c *cli.Context) error {
-	repo := newVaultRepository(c.String("vault_address"), c.String("vault_token"))
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
 
 	err := repo.DeleteUser(c.String("id"))
 	if err != nil {

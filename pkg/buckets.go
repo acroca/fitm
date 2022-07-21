@@ -7,7 +7,7 @@ import (
 )
 
 func ListBucketsAction(c *cli.Context) error {
-	repo := newVaultRepository(c.String("vault_address"), c.String("vault_token"))
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
 
 	buckets, err := repo.ListBuckets()
 	if err != nil {
@@ -27,7 +27,7 @@ func ListBucketsAction(c *cli.Context) error {
 }
 
 func CreateBucketsAction(c *cli.Context) error {
-	repo := newVaultRepository(c.String("vault_address"), c.String("vault_token"))
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
 
 	err := repo.CreateBucket(c.String("id"))
 	if err != nil {
@@ -38,7 +38,7 @@ func CreateBucketsAction(c *cli.Context) error {
 }
 
 func DeleteBucketsAction(c *cli.Context) error {
-	repo := newVaultRepository(c.String("vault_address"), c.String("vault_token"))
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
 
 	err := repo.DeleteBucket(c.String("id"))
 	if err != nil {
