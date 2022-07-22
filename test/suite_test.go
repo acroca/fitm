@@ -2,13 +2,11 @@ package test
 
 import (
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -37,7 +35,6 @@ func newSuite(t *testing.T) *Suite {
 	suite.network()
 	suite.runVault()
 	suite.runMitm()
-	suite.runFakeServer()
 	return suite
 }
 
@@ -103,7 +100,7 @@ func (s *Suite) runMitm() {
 	}
 }
 
-func (s *Suite) runFakeServer() {
+func (s *Suite) runFakeServer(fn http.HandlerFunc) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(s.t, err)
 	port := listener.Addr().(*net.TCPAddr).Port
@@ -114,21 +111,7 @@ func (s *Suite) runFakeServer() {
 		s.fakeServerAddr = fmt.Sprintf("http://fake-server:%v", port)
 	}
 
-	go http.Serve(listener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		number := 0
-
-		currentCookie, err := r.Cookie("test-cookie")
-		if err == http.ErrNoCookie {
-			number = rand.Intn(10000000)
-		} else {
-			number, err = strconv.Atoi(currentCookie.Value)
-			require.NoError(s.t, err)
-		}
-		w.Header().Add("Set-Cookie", fmt.Sprintf("test-cookie=%v,", number))
-
-		w.WriteHeader(200)
-		w.Write([]byte(strconv.Itoa(number)))
-	}))
+	go http.Serve(listener, fn)
 }
 
 func (s *Suite) cmd(t *testing.T, c string) string {

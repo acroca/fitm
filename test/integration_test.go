@@ -1,8 +1,11 @@
 package test
 
 import (
+	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -12,6 +15,22 @@ import (
 func TestHappyPath(t *testing.T) {
 	suite := newSuite(t)
 	defer suite.teardown()
+
+	suite.runFakeServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		number := 0
+
+		currentCookie, err := r.Cookie("test-cookie")
+		if err == http.ErrNoCookie {
+			number = rand.Intn(10000000)
+		} else {
+			number, err = strconv.Atoi(currentCookie.Value)
+			require.NoError(t, err)
+		}
+		w.Header().Add("Set-Cookie", fmt.Sprintf("test-cookie=%v,", number))
+
+		w.WriteHeader(200)
+		w.Write([]byte(strconv.Itoa(number)))
+	}))
 
 	repo := suite.repo()
 
