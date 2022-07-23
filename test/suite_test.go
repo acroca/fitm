@@ -127,6 +127,7 @@ func (s *Suite) runFakeServer(fn http.HandlerFunc) {
 
 	s.FakeServer = &http.Server{Handler: fn}
 	go s.FakeServer.Serve(listener)
+	time.Sleep(30 * time.Millisecond)
 }
 
 func (s *Suite) runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue() {
