@@ -35,7 +35,6 @@ type Suite struct {
 
 func (s *Suite) SetupSuite() {
 	s.IsCI = os.Getenv("CI") == "true"
-	s.IsCI = os.Getenv("I") == "true"
 	s.network()
 	s.runVault()
 	s.runMitm()
@@ -127,7 +126,6 @@ func (s *Suite) runFakeServer(fn http.HandlerFunc) {
 
 	s.FakeServer = &http.Server{Handler: fn}
 	go s.FakeServer.Serve(listener)
-	time.Sleep(30 * time.Millisecond)
 }
 
 func (s *Suite) runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue() {
