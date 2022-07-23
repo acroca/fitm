@@ -13,82 +13,87 @@ import (
 	"time"
 
 	fitm "github.com/acroca/fitm/pkg"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 )
 
 type Suite struct {
-	t    *testing.T
-	isCI bool
+	suite.Suite
 
-	repoClient *fitm.Repository
+	IsCI bool
 
-	vaultContainer string
-	localVaultAddr string
+	RepoClient *fitm.Repository
 
-	mitmContainer string
-	mitmPort      string
+	VaultContainer string
+	LocalVaultAddr string
 
-	fakeServerAddr string
+	MitmContainer string
+	MitmPort      string
+
+	FakeServer     *http.Server
+	FakeServerAddr string
 }
 
-func newSuite(t *testing.T) *Suite {
-	suite := &Suite{
-		t:    t,
-		isCI: os.Getenv("CI") == "true",
-	}
-	suite.network()
-	suite.runVault()
-	suite.runMitm()
-
-	return suite
+func (s *Suite) SetupSuite() {
+	s.IsCI = os.Getenv("CI") == "true"
+	s.IsCI = os.Getenv("I") == "true"
+	s.network()
+	s.runVault()
+	s.runMitm()
 }
 
-func (s *Suite) testClient(bucket, token string) *TestClient {
-	return newTestClient(s.t, fmt.Sprintf("localhost:%v", s.mitmPort), s.fakeServerAddr, bucket, token)
-}
-
-func (s *Suite) teardown() {
-	s.cmd("docker rm -f " + s.vaultContainer + " " + s.mitmContainer)
-	if !s.isCI {
+func (s *Suite) TearDownSuite() {
+	s.cmd("docker rm -f " + s.VaultContainer + " " + s.MitmContainer)
+	if !s.IsCI {
 		s.cmd("docker network rm fitm_test")
 	}
 }
 
+func (s *Suite) TearDownTest() {
+	if s.FakeServer != nil {
+		s.FakeServer.Close()
+	}
+	s.FakeServer = nil
+}
+
+func (s *Suite) testClient(bucket, token string) *TestClient {
+	return newTestClient(s.T(), fmt.Sprintf("localhost:%v", s.MitmPort), s.FakeServerAddr, bucket, token)
+}
+
 func (s *Suite) network() {
-	if !s.isCI {
+	if !s.IsCI {
 		s.cmd("docker network create fitm_test")
 	}
 }
 
 func (s *Suite) runVault() {
-	if s.isCI {
-		s.vaultContainer = s.cmd("docker run --name fitm_test_vault -d --cap-add=IPC_LOCK --network host -e VAULT_DEV_ROOT_TOKEN_ID=myroot vault:1.9.4")
-		s.localVaultAddr = "http://localhost:8200"
+	if s.IsCI {
+		s.VaultContainer = s.cmd("docker run --name fitm_test_vault -d --cap-add=IPC_LOCK --network host -e VAULT_DEV_ROOT_TOKEN_ID=myroot vault:1.9.4")
+		s.LocalVaultAddr = "http://localhost:8200"
 	} else {
-		s.vaultContainer = s.cmd("docker run --name fitm_test_vault -d --cap-add=IPC_LOCK --network fitm_test -p 8200 -e VAULT_DEV_ROOT_TOKEN_ID=myroot vault:1.9.4")
+		s.VaultContainer = s.cmd("docker run --name fitm_test_vault -d --cap-add=IPC_LOCK --network fitm_test -p 8200 -e VAULT_DEV_ROOT_TOKEN_ID=myroot vault:1.9.4")
 
-		vaultAddr := s.cmd("docker port " + s.vaultContainer + " 8200")
+		vaultAddr := s.cmd("docker port " + s.VaultContainer + " 8200")
 		firstLine := strings.Split(string(vaultAddr), "\n")[0]
 		mappedVaultPort := strings.Split(firstLine, ":")[1]
 
-		s.localVaultAddr = fmt.Sprintf("http://localhost:%v", mappedVaultPort)
+		s.LocalVaultAddr = fmt.Sprintf("http://localhost:%v", mappedVaultPort)
 	}
-	s.repoClient = fitm.NewVaultRepository(s.localVaultAddr, "myroot")
+	s.RepoClient = fitm.NewVaultRepository(s.LocalVaultAddr, "myroot")
 }
 
 func (s *Suite) runMitm() {
 	mitmImage := s.cmd("docker build ../proxy -q")
 
-	if s.isCI {
-		s.mitmContainer = s.cmd("docker run -d --network host -e VAULT_ADDRESS=http://localhost:8200 " + mitmImage)
-		s.mitmPort = "8080"
+	if s.IsCI {
+		s.MitmContainer = s.cmd("docker run -d --network host -e VAULT_ADDRESS=http://localhost:8200 " + mitmImage)
+		s.MitmPort = "8080"
 	} else {
 		mitmImage := s.cmd("docker build ../proxy -q")
-		s.mitmContainer = s.cmd("docker run -d --add-host=fake-server:host-gateway --network fitm_test -p 8080 -e VAULT_ADDRESS=http://fitm_test_vault:8200 " + mitmImage)
+		s.MitmContainer = s.cmd("docker run -d --add-host=fake-server:host-gateway --network fitm_test -p 8080 -e VAULT_ADDRESS=http://fitm_test_vault:8200 " + mitmImage)
 
-		mitmAddr := s.cmd("docker port " + s.mitmContainer + " 8080")
+		mitmAddr := s.cmd("docker port " + s.MitmContainer + " 8080")
 		firstLine := strings.Split(string(mitmAddr), "\n")[0]
-		s.mitmPort = strings.Split(firstLine, ":")[1]
+		s.MitmPort = strings.Split(firstLine, ":")[1]
 	}
 	s.waitForMitm()
 }
@@ -99,28 +104,29 @@ func (s *Suite) waitForMitm() {
 
 	var logs string
 	for max > 0 {
-		logs = s.cmd("docker logs " + s.mitmContainer)
+		logs = s.cmd("docker logs " + s.MitmContainer)
 		if strings.Contains(logs, mustContain) {
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
 		max--
 	}
-	require.Contains(s.t, logs, mustContain)
+	s.Require().Contains(logs, mustContain)
 }
 
 func (s *Suite) runFakeServer(fn http.HandlerFunc) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(s.t, err)
+	s.Require().NoError(err)
 	port := listener.Addr().(*net.TCPAddr).Port
 
-	if s.isCI {
-		s.fakeServerAddr = fmt.Sprintf("http://localhost:%v", port)
+	if s.IsCI {
+		s.FakeServerAddr = fmt.Sprintf("http://localhost:%v", port)
 	} else {
-		s.fakeServerAddr = fmt.Sprintf("http://fake-server:%v", port)
+		s.FakeServerAddr = fmt.Sprintf("http://fake-server:%v", port)
 	}
 
-	go http.Serve(listener, fn)
+	s.FakeServer = &http.Server{Handler: fn}
+	go s.FakeServer.Serve(listener)
 }
 
 func (s *Suite) runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue() {
@@ -132,7 +138,7 @@ func (s *Suite) runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue() {
 			number = rand.Intn(10000000)
 		} else {
 			number, err = strconv.Atoi(currentCookie.Value)
-			require.NoError(s.t, err)
+			s.Require().NoError(err)
 		}
 		w.Header().Add("Set-Cookie", fmt.Sprintf("test-cookie=%v,", number))
 
@@ -142,16 +148,20 @@ func (s *Suite) runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue() {
 }
 
 func (s *Suite) createBucket(id string) {
-	require.NoError(s.t, s.repoClient.CreateBucket(id))
+	s.Require().NoError(s.RepoClient.CreateBucket(id))
 }
 
 func (s *Suite) createUser(id string, tokens []string, buckets []string) {
-	require.NoError(s.t, s.repoClient.CreateUser(id, tokens, buckets))
+	s.Require().NoError(s.RepoClient.CreateUser(id, tokens, buckets))
 }
 
 func (s *Suite) cmd(c string) string {
 	parts := strings.Split(c, " ")
 	res, err := exec.Command(parts[0], parts[1:]...).Output()
-	require.NoError(s.t, err)
+	s.Require().NoError(err)
 	return strings.TrimSpace(string(res))
+}
+
+func TestRunSuite(t *testing.T) {
+	suite.Run(t, new(Suite))
 }
