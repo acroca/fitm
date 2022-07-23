@@ -1,67 +1,49 @@
 package test
 
 import (
-	"fmt"
-	"io/ioutil"
-	"math/rand"
-	"net/http"
-	"strconv"
 	"testing"
-	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
-func TestHappyPath(t *testing.T) {
+func TestCookieIsSavedInProxy(t *testing.T) {
 	suite := newSuite(t)
 	defer suite.teardown()
 
-	suite.runFakeServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		number := 0
+	suite.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
 
-		currentCookie, err := r.Cookie("test-cookie")
-		if err == http.ErrNoCookie {
-			number = rand.Intn(10000000)
-		} else {
-			number, err = strconv.Atoi(currentCookie.Value)
-			require.NoError(t, err)
-		}
-		w.Header().Add("Set-Cookie", fmt.Sprintf("test-cookie=%v,", number))
+	bucket := uuid.New().String()
+	token := uuid.New().String()
 
-		w.WriteHeader(200)
-		w.Write([]byte(strconv.Itoa(number)))
-	}))
+	suite.createBucket(bucket)
+	suite.createUser("testUser", []string{token}, []string{bucket})
 
-	repo := suite.repo()
-
-	require.NoError(t, repo.CreateBucket("testBucket"))
-	require.NoError(t, repo.CreateUser("testUser", []string{"testToken"}, []string{"testBucket"}))
-
-	time.Sleep(2 * time.Second)
-	client := suite.httpClient()
-
-	res, err := client.Get(suite.fakeServerAddr)
-	require.NoError(t, err)
-	require.Equal(t, 200, res.StatusCode)
-	first := body(t, res)
-	for _, cookie := range res.Cookies() {
-		require.NotEqual(t, "test-cookie", cookie.Name)
-	}
-
-	res, err = client.Get(suite.fakeServerAddr)
-	require.NoError(t, err)
-	require.Equal(t, 200, res.StatusCode)
-	second := body(t, res)
-	for _, cookie := range res.Cookies() {
-		require.NotEqual(t, "test-cookie", cookie.Name)
-	}
+	client := suite.testClient(bucket, token)
+	first := client.Get()
+	second := client.Get()
 
 	require.Equal(t, first, second)
 }
 
-func body(t *testing.T, res *http.Response) string {
-	all, err := ioutil.ReadAll(res.Body)
-	require.NoError(t, err)
-	res.Body.Close()
-	return string(all)
+func TestCookieIsSavedInProxyForAllUsersInTheSameBucket(t *testing.T) {
+	suite := newSuite(t)
+	defer suite.teardown()
+
+	suite.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
+
+	bucket := uuid.New().String()
+	token1 := uuid.New().String()
+	token2 := uuid.New().String()
+
+	suite.createBucket(bucket)
+	suite.createUser("testUser", []string{token1}, []string{bucket})
+	suite.createUser("testUser", []string{token2}, []string{bucket})
+
+	client := suite.testClient(bucket, token1)
+	first := client.Get()
+	client = suite.testClient(bucket, token2)
+	second := client.Get()
+
+	require.Equal(t, first, second)
 }
