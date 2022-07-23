@@ -4,20 +4,17 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 type TestClient struct {
-	t          *testing.T
+	s          *Suite
 	httpClient *http.Client
 	addr       string
 }
 
-func newTestClient(t *testing.T, host, addr, bucket, token string) *TestClient {
+func newTestClient(s *Suite, host, addr, bucket, token string) *TestClient {
 	return &TestClient{
-		t:    t,
+		s:    s,
 		addr: addr,
 		httpClient: &http.Client{
 			Transport: &http.Transport{
@@ -33,17 +30,20 @@ func newTestClient(t *testing.T, host, addr, bucket, token string) *TestClient {
 
 func (c *TestClient) Get() string {
 	res, err := c.httpClient.Get(c.addr)
-	require.NoError(c.t, err)
-	require.Equal(c.t, 200, res.StatusCode)
+	c.s.Require().NoError(err)
+	if res.StatusCode != 200 {
+		c.s.logMitmLogs()
+		c.s.Require().Equal(200, res.StatusCode)
+	}
 	for _, cookie := range res.Cookies() {
-		require.NotEqual(c.t, "test-cookie", cookie.Name)
+		c.s.Require().NotEqual("test-cookie", cookie.Name)
 	}
 	return c.readBody(res)
 }
 
 func (c *TestClient) readBody(res *http.Response) string {
 	all, err := ioutil.ReadAll(res.Body)
-	require.NoError(c.t, err)
+	c.s.Require().NoError(err)
 	defer res.Body.Close()
 
 	return string(all)

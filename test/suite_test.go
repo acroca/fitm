@@ -56,7 +56,7 @@ func (s *Suite) TearDownTest() {
 }
 
 func (s *Suite) testClient(bucket, token string) *TestClient {
-	return newTestClient(s.T(), fmt.Sprintf("localhost:%v", s.MitmPort), s.FakeServerAddr, bucket, token)
+	return newTestClient(s, fmt.Sprintf("localhost:%v", s.MitmPort), s.FakeServerAddr, bucket, token)
 }
 
 func (s *Suite) network() {
@@ -106,7 +106,6 @@ func (s *Suite) waitForMitm() {
 	for max > 0 {
 		logs = s.cmd("docker logs " + s.MitmContainer)
 		if strings.Contains(logs, mustContain) {
-			time.Sleep(1 * time.Second)
 			return
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -161,6 +160,11 @@ func (s *Suite) cmd(c string) string {
 	res, err := exec.Command(parts[0], parts[1:]...).Output()
 	s.Require().NoError(err)
 	return strings.TrimSpace(string(res))
+}
+
+func (s *Suite) logMitmLogs() {
+	logs := s.cmd("docker logs " + s.MitmContainer)
+	s.T().Log("MITM Logs: ", logs)
 }
 
 func TestRunSuite(t *testing.T) {
