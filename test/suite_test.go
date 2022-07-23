@@ -106,6 +106,7 @@ func (s *Suite) waitForMitm() {
 	for max > 0 {
 		logs = s.cmd("docker logs " + s.MitmContainer)
 		if strings.Contains(logs, mustContain) {
+			time.Sleep(1 * time.Second)
 			return
 		}
 		time.Sleep(50 * time.Millisecond)

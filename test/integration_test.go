@@ -38,3 +38,22 @@ func (s *Suite) TestCookieIsSavedInProxyForAllUsersInTheSameBucket() {
 
 	s.Require().Equal(first, second)
 }
+
+func (s *Suite) TestCookieIsNotSavedAcrossBuckets() {
+	s.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
+
+	bucket1 := uuid.New().String()
+	bucket2 := uuid.New().String()
+	token := uuid.New().String()
+
+	s.createBucket(bucket1)
+	s.createBucket(bucket2)
+	s.createUser("testUser", []string{token}, []string{bucket1, bucket2})
+
+	client := s.testClient(bucket1, token)
+	first := client.Get()
+	client = s.testClient(bucket2, token)
+	second := client.Get()
+
+	s.Require().NotEqual(first, second)
+}
