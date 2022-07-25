@@ -39,7 +39,7 @@ Once fitm is running, we need to install and trust the generated certificate fro
 After installing the certificate, prepare fitm to be usable:
 
 ```sh
-# Currently fitm ships with vault usin this root token. We'll use it for the following commands from the CLI
+# Currently fitm ships with vault using this root token. We'll use it for the following commands from the CLI
 export VAULT_TOKEN=myroot
 
 # Creates a bucket in fitm
