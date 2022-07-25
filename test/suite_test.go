@@ -13,7 +13,6 @@ import (
 	"time"
 
 	fitm "github.com/acroca/fitm/pkg"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -155,8 +154,22 @@ func (s *Suite) createBucket(id string) {
 	s.Require().NoError(s.RepoClient.CreateBucket(id))
 }
 
-func (s *Suite) createUser(tokens []string, buckets []string) {
-	s.Require().NoError(s.RepoClient.CreateUser(uuid.NewString(), tokens, buckets))
+func (s *Suite) createUser(userID string) {
+	s.Require().NoError(s.RepoClient.CreateUser(userID))
+}
+
+func (s *Suite) grantAccess(userID, bucketID string) {
+	s.Require().NoError(s.RepoClient.GrantAccess(userID, bucketID))
+}
+
+func (s *Suite) revokeAccess(userID, bucketID string) {
+	s.Require().NoError(s.RepoClient.RevokeAccess(userID, bucketID))
+}
+
+func (s *Suite) generateToken(userID string, bucketIDs ...string) string {
+	token, err := s.RepoClient.GenerateAuthToken(userID, bucketIDs)
+	s.Require().NoError(err)
+	return token
 }
 
 func (s *Suite) cmd(c string) string {

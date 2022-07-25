@@ -128,29 +128,86 @@ func (c *Repository) DeleteUser(id string) error {
 	return nil
 }
 
-func (c *Repository) CreateUser(id string, tokens []string, buckets []string) error {
-	policies := []string{"default"}
-	for _, bucket := range buckets {
-		policies = append(policies, "b."+bucket)
-	}
+func (c *Repository) CreateUser(id string) error {
 	_, err := c.client.Logical().Write("auth/token/roles/"+id, map[string]interface{}{
 		"options": map[string]int{
 			"cas": 0,
 		},
-		"allowed_policies": policies,
+		"allowed_policies": []string{"default"},
 	})
 	if err != nil {
 		return err
 	}
 
-	for _, token := range tokens {
-		_, err = c.client.Logical().Write("auth/token/create/"+id, map[string]interface{}{
-			"id":       token,
-			"policies": policies,
-		})
-		if err != nil {
-			return err
+	return nil
+}
+
+func (c *Repository) GrantAccess(userID, bucketID string) error {
+	policyName := "b." + bucketID
+
+	res, err := c.client.Logical().Read("auth/token/roles/" + userID)
+	if err != nil {
+		return err
+	}
+
+	policies := res.Data["allowed_policies"].([]interface{})
+	for _, policy := range policies {
+		if policy.(string) == policyName {
+			return nil
 		}
 	}
+	policies = append(policies, policyName)
+
+	_, err = c.client.Logical().Write("auth/token/roles/"+userID, map[string]interface{}{
+		"allowed_policies": policies,
+	})
+	if err != nil {
+		return err
+	}
 	return nil
+}
+
+func (c *Repository) RevokeAccess(userID, bucketID string) error {
+	policyName := "b." + bucketID
+
+	res, err := c.client.Logical().Read("auth/token/roles/" + userID)
+	if err != nil {
+		return err
+	}
+
+	initialPolicies := res.Data["allowed_policies"].([]interface{})
+	newPolicies := make([]string, 0)
+	for _, policy := range initialPolicies {
+		if policy.(string) != policyName {
+			newPolicies = append(newPolicies, policy.(string))
+		}
+	}
+	if len(initialPolicies) == len(newPolicies) {
+		return nil
+	}
+
+	_, err = c.client.Logical().Write("auth/token/roles/"+userID, map[string]interface{}{
+		"allowed_policies": newPolicies,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Repository) GenerateAuthToken(userID string, bucketIDs []string) (string, error) {
+	policies := make([]string, 0)
+	for _, bucketID := range bucketIDs {
+		policies = append(policies, "b."+bucketID)
+	}
+
+	res, err := c.client.Logical().Write("auth/token/create/"+userID, map[string]interface{}{
+		"policies": policies,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return res.Auth.ClientToken, nil
 }

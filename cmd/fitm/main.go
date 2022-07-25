@@ -96,7 +96,7 @@ func main() {
 			},
 			{
 				Name:  "users",
-				Usage: "user operations.",
+				Usage: "User operations.",
 
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -120,9 +120,9 @@ func main() {
 						Action: fitm.ListUsersAction,
 					},
 					{
-						Name:   "create",
-						Usage:  "create a user.",
-						Action: fitm.CreateUsersAction,
+						Name:   "token",
+						Usage:  "Generates a token to access specific buckets.",
+						Action: fitm.TokenAction,
 						Flags: []cli.Flag{
 							&cli.StringFlag{
 								Name:     "id",
@@ -130,13 +130,20 @@ func main() {
 								Required: true,
 							},
 							&cli.StringSliceFlag{
-								Name:     "token",
-								Usage:    "Token the user can use to access the service",
+								Name:     "bucket-ids",
+								Usage:    "Bucket IDs",
 								Required: true,
 							},
-							&cli.StringSliceFlag{
-								Name:     "bucket",
-								Usage:    "Bucket the user can use to access the service",
+						},
+					},
+					{
+						Name:   "create",
+						Usage:  "create a user.",
+						Action: fitm.CreateUsersAction,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "id",
+								Usage:    "User ID",
 								Required: true,
 							},
 						},
@@ -149,6 +156,63 @@ func main() {
 							&cli.StringFlag{
 								Name:     "id",
 								Usage:    "User ID",
+								Required: true,
+							},
+						},
+					},
+				},
+			},
+
+			{
+				Name:  "acl",
+				Usage: "Access control operations.",
+
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "vault_address",
+						Value:   "http://localhost:8200",
+						Usage:   "Address where Vault is located",
+						EnvVars: []string{"VAULT_ADDRESS"},
+					},
+					&cli.StringFlag{
+						Name:     "vault_token",
+						Usage:    "Vault token",
+						EnvVars:  []string{"VAULT_TOKEN"},
+						Required: true,
+					},
+				},
+
+				Subcommands: []*cli.Command{
+					{
+						Name:   "grant",
+						Usage:  "Grants access to users in buckets.",
+						Action: fitm.GrantAccessAction,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "user-id",
+								Usage:    "User ID",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "bucket-id",
+								Usage:    "Bucket ID",
+								Required: true,
+							},
+						},
+					},
+					{
+						Name:   "revoke",
+						Usage:  "Revokes access of users in buckets.",
+						Action: fitm.RevokeAccessAction,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "user-id",
+								Usage:    "User ID",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "bucket-id",
+								Usage:    "Bucket ID",
 								Required: true,
 							},
 						},

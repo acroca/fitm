@@ -29,7 +29,7 @@ func ListUsersAction(c *cli.Context) error {
 func CreateUsersAction(c *cli.Context) error {
 	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
 
-	err := repo.CreateUser(c.String("id"), c.StringSlice("token"), c.StringSlice("bucket"))
+	err := repo.CreateUser(c.String("id"))
 	if err != nil {
 		return err
 	}
@@ -45,5 +45,38 @@ func DeleteUsersAction(c *cli.Context) error {
 		return err
 	}
 	fmt.Println("User deleted.")
+	return nil
+}
+
+func GrantAccessAction(c *cli.Context) error {
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
+
+	err := repo.GrantAccess(c.String("user-id"), c.String("bucket-id"))
+	if err != nil {
+		return err
+	}
+	fmt.Println("Access granted.")
+	return nil
+}
+
+func RevokeAccessAction(c *cli.Context) error {
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
+
+	err := repo.RevokeAccess(c.String("user-id"), c.String("bucket-id"))
+	if err != nil {
+		return err
+	}
+	fmt.Println("Access revokeed.")
+	return nil
+}
+
+func TokenAction(c *cli.Context) error {
+	repo := NewVaultRepository(c.String("vault_address"), c.String("vault_token"))
+
+	token, err := repo.GenerateAuthToken(c.String("id"), c.StringSlice("bucket-ids"))
+	if err != nil {
+		return err
+	}
+	fmt.Println("Token generated: " + token)
 	return nil
 }
