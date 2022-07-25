@@ -22,8 +22,7 @@ class FITM:
     def __init__(self):
         self.clients = {}
 
-    def vault_client(self, flow: http.HTTPFlow) -> hvac.Client:
-        _, token = flow.metadata["proxyauth"]
+    def vault_client(self, token: str) -> hvac.Client:
         if token in self.clients:
             return self.clients[token]
         client = hvac.Client(
@@ -31,7 +30,6 @@ class FITM:
             token=token,
         )
         if not client.is_authenticated():
-            flow.response = http.Response.make(407)
             return None
 
         self.clients[token] = client
@@ -41,11 +39,18 @@ class FITM:
         assert flow.response
 
         bucket, token = flow.metadata["proxyauth"]
-        v = self.vault_client(flow)
+        v = self.vault_client(token)
         if v == None:
+            flow.response = http.Response.make(407)
             return False
 
-        read_response = v.secrets.kv.read_secret_version(path='buckets/'+bucket)
+        read_response = None
+        try:
+            read_response = v.secrets.kv.read_secret_version(path='buckets/'+bucket)
+        except hvac.exceptions.Forbidden:
+            flow.response = http.Response.make(407)
+            return False
+
         vault_cookies = json.loads(read_response['data']['data']['cookies'])
 
         for key, (value, attrs) in flow.response.cookies.items(multi=True):
@@ -79,7 +84,8 @@ class FITM:
                         'key': key,
                         'value': value,
                 })
-        create_response = v.secrets.kv.v2.create_or_update_secret(
+
+        v.secrets.kv.v2.create_or_update_secret(
             path='buckets/'+bucket,
             secret=dict(cookies=json.dumps(vault_cookies)),
         )
@@ -88,7 +94,7 @@ class FITM:
 
     def request(self, flow: http.HTTPFlow):
         bucket, token = flow.metadata["proxyauth"]
-        v = self.vault_client(flow)
+        v = self.vault_client(token)
         if v == None:
             return False
 

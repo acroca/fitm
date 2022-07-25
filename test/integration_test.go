@@ -1,35 +1,38 @@
 package test
 
 import (
+	"net/http"
+
 	"github.com/google/uuid"
 )
 
 func (s *Suite) TestCookieIsSavedInProxy() {
 	s.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
 
-	bucket := uuid.New().String()
-	token := uuid.New().String()
+	bucket := uuid.NewString()
+	token := uuid.NewString()
 
 	s.createBucket(bucket)
-	s.createUser("testUser", []string{token}, []string{bucket})
+	s.createUser([]string{token}, []string{bucket})
 
 	client := s.testClient(bucket, token)
 	first := client.Get()
 	second := client.Get()
 
+	s.logMitmLogs()
 	s.Require().Equal(first, second)
 }
 
 func (s *Suite) TestCookieIsSavedInProxyForAllUsersInTheSameBucket() {
 	s.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
 
-	bucket := uuid.New().String()
-	token1 := uuid.New().String()
-	token2 := uuid.New().String()
+	bucket := uuid.NewString()
+	token1 := uuid.NewString()
+	token2 := uuid.NewString()
 
 	s.createBucket(bucket)
-	s.createUser("testUser", []string{token1}, []string{bucket})
-	s.createUser("testUser", []string{token2}, []string{bucket})
+	s.createUser([]string{token1}, []string{bucket})
+	s.createUser([]string{token2}, []string{bucket})
 
 	client := s.testClient(bucket, token1)
 	first := client.Get()
@@ -42,13 +45,13 @@ func (s *Suite) TestCookieIsSavedInProxyForAllUsersInTheSameBucket() {
 func (s *Suite) TestCookieIsNotSavedAcrossBuckets() {
 	s.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
 
-	bucket1 := uuid.New().String()
-	bucket2 := uuid.New().String()
-	token := uuid.New().String()
+	bucket1 := uuid.NewString()
+	bucket2 := uuid.NewString()
+	token := uuid.NewString()
 
 	s.createBucket(bucket1)
 	s.createBucket(bucket2)
-	s.createUser("testUser", []string{token}, []string{bucket1, bucket2})
+	s.createUser([]string{token}, []string{bucket1, bucket2})
 
 	client := s.testClient(bucket1, token)
 	first := client.Get()
@@ -56,4 +59,33 @@ func (s *Suite) TestCookieIsNotSavedAcrossBuckets() {
 	second := client.Get()
 
 	s.Require().NotEqual(first, second)
+}
+
+func (s *Suite) TestUnauthorisedUser() {
+	s.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
+
+	bucket := uuid.NewString()
+	token := uuid.NewString()
+
+	s.createBucket(bucket)
+
+	client := s.testClient(bucket, token)
+	res, err := client.RawGet()
+	s.Require().NoError(err)
+	s.Require().Equal(http.StatusProxyAuthRequired, res.StatusCode)
+}
+
+func (s *Suite) TestRequiresValidBucket() {
+	s.runFakeServerGeneratingCookieIfNotPresentAndReturnsItsValue()
+
+	bucket := uuid.NewString()
+	token := uuid.NewString()
+
+	s.createBucket(bucket)
+	s.createUser([]string{token}, []string{bucket})
+
+	client := s.testClient(uuid.NewString(), token)
+	res, err := client.RawGet()
+	s.Require().NoError(err)
+	s.Require().Equal(http.StatusProxyAuthRequired, res.StatusCode)
 }

@@ -28,12 +28,16 @@ func newTestClient(s *Suite, host, addr, bucket, token string) *TestClient {
 	}
 }
 
+func (c *TestClient) RawGet() (*http.Response, error) {
+	return c.httpClient.Get(c.addr)
+}
+
 func (c *TestClient) Get() string {
-	res, err := c.httpClient.Get(c.addr)
+	res, err := c.RawGet()
 	c.s.Require().NoError(err)
-	if res.StatusCode != 200 {
+	if res.StatusCode != http.StatusOK {
 		c.s.logMitmLogs()
-		c.s.Require().Equal(200, res.StatusCode)
+		c.s.Require().Equal(http.StatusOK, res.StatusCode)
 	}
 	for _, cookie := range res.Cookies() {
 		c.s.Require().NotEqual("test-cookie", cookie.Name)
@@ -42,6 +46,9 @@ func (c *TestClient) Get() string {
 }
 
 func (c *TestClient) readBody(res *http.Response) string {
+	if res.Body == nil {
+		return ""
+	}
 	all, err := ioutil.ReadAll(res.Body)
 	c.s.Require().NoError(err)
 	defer res.Body.Close()

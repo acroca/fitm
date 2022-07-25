@@ -13,6 +13,7 @@ import (
 	"time"
 
 	fitm "github.com/acroca/fitm/pkg"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -34,6 +35,7 @@ type Suite struct {
 }
 
 func (s *Suite) SetupSuite() {
+	rand.Seed(time.Now().UnixNano())
 	s.IsCI = os.Getenv("CI") == "true"
 	s.network()
 	s.runVault()
@@ -94,6 +96,9 @@ func (s *Suite) runMitm() {
 		firstLine := strings.Split(string(mitmAddr), "\n")[0]
 		s.MitmPort = strings.Split(firstLine, ":")[1]
 	}
+	dir, err := os.Getwd()
+	s.Require().NoError(err)
+	s.cmd("docker cp " + dir + "/../proxy/fitm.py " + s.MitmContainer + ":/root/fitm.py")
 	s.waitForMitm()
 }
 
@@ -150,14 +155,20 @@ func (s *Suite) createBucket(id string) {
 	s.Require().NoError(s.RepoClient.CreateBucket(id))
 }
 
-func (s *Suite) createUser(id string, tokens []string, buckets []string) {
-	s.Require().NoError(s.RepoClient.CreateUser(id, tokens, buckets))
+func (s *Suite) createUser(tokens []string, buckets []string) {
+	s.Require().NoError(s.RepoClient.CreateUser(uuid.NewString(), tokens, buckets))
 }
 
 func (s *Suite) cmd(c string) string {
 	parts := strings.Split(c, " ")
 	res, err := exec.Command(parts[0], parts[1:]...).Output()
-	s.Require().NoError(err)
+
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok {
+			s.T().Log("STDERR: ", string(ee.Stderr))
+		}
+		s.Require().NoError(err)
+	}
 	return strings.TrimSpace(string(res))
 }
 
