@@ -23,6 +23,39 @@ I wanted to create a way to share access to services in a controlled manner, wit
 - User permissions for specific buckets
 - Admin API to manage buckets and users
 
+## Quick start
+
+First, get the binary from [the lastest release](https://github.com/acroca/fitm/releases/latest).
+
+Here there are some initial commands to get the service running and usable:
+
+```sh
+./fitm init # Prepares the ~/.config/fitm
+./fitm up # Runs the proxy
+```
+
+Once fitm is running, we need to install and trust the generated certificate from $HOME/.config/fitm/dotmitmproxy/mitmproxy-ca-cert.pem
+
+After installing the certificate, prepare fitm to be usable:
+
+```sh
+# Currently fitm ships with vault usin this root token. We'll use it for the following commands from the CLI
+export VAULT_TOKEN=myroot
+
+# Creates a bucket in fitm
+./fitm buckets create --id mybucket
+
+# Creates a user in fitm
+./fitm users create --id myuser
+
+# Grants access, so the user has access to the bucket
+./fitm acl grant --user-id myuser --bucket-id mybucket
+
+# Creates a token for that user and bucket.
+./fitm users token --id myuser --bucket-ids mybucket
+```
+
+At this point fitm is ready to use. Configure the HTTP Proxy in your browser to `localhost:8080` and use `mybucket` as username, and the token as a password to authenticate yourself.
 
 ## How does this work
 
