@@ -57,6 +57,13 @@ export VAULT_TOKEN=myroot
 
 At this point fitm is ready to use. Configure the HTTP Proxy in your browser to `localhost:8080` and use `mybucket` as username, and the token as a password to authenticate yourself.
 
+Fitm ships with an embedded browser (powered by [Playwright](https://github.com/microsoft/playwright)). To use it:
+```sh
+./fitm browser install
+
+./fitm browser open --bucket-id mybucket --token mytoken
+```
+
 ## How does this work
 
 The main component of FITM is the HTTP/HTTPS proxy, and that's done using [mitmproxy](https://mitmproxy.org/). This is an awesome tool that creates a man-in-the-middle proxy (essentially the HTTP/HTTPS proxy itself) with a really good plugin system, which we use to implement the cookies logic.

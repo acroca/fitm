@@ -7,6 +7,7 @@ import (
 	"path"
 	"text/template"
 
+	"github.com/playwright-community/playwright-go"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -53,4 +54,43 @@ func DownAction(c *cli.Context) error {
 	cmd.Stderr = os.Stderr
 
 	return cmd.Run()
+}
+
+func BrowserInstallAction(c *cli.Context) error {
+	return playwright.Install(&playwright.RunOptions{
+		Browsers: []string{"chromium"},
+	})
+}
+
+func BrowserRunAction(c *cli.Context) error {
+	bucket := c.String("bucket-id")
+	token := c.String("token")
+
+	pw, err := playwright.Run()
+	if err != nil {
+		return err
+	}
+	browser, err := pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
+		Headless: playwright.Bool(false),
+		Proxy: &playwright.BrowserTypeLaunchOptionsProxy{
+			Server:   playwright.String("localhost:8080"),
+			Username: playwright.String(bucket),
+			Password: playwright.String(token),
+		},
+	})
+	if err != nil {
+		return err
+	}
+	_, err = browser.NewPage()
+	if err != nil {
+		return err
+	}
+	onCloseWasCalled := make(chan bool, 1)
+	onClose := func() {
+		onCloseWasCalled <- true
+	}
+	browser.On("close", onClose)
+	<-onCloseWasCalled
+
+	return nil
 }

@@ -162,7 +162,6 @@ func main() {
 					},
 				},
 			},
-
 			{
 				Name:  "acl",
 				Usage: "Access control operations.",
@@ -213,6 +212,35 @@ func main() {
 							&cli.StringFlag{
 								Name:     "bucket-id",
 								Usage:    "Bucket ID",
+								Required: true,
+							},
+						},
+					},
+				},
+			},
+			{
+				Name:  "browser",
+				Usage: "Browser operations.",
+
+				Subcommands: []*cli.Command{
+					{
+						Name:   "install",
+						Usage:  "Installs embedded browser.",
+						Action: fitm.BrowserInstallAction,
+					},
+					{
+						Name:   "open",
+						Usage:  "Opens an embedded browser configured and ready to use.",
+						Action: fitm.BrowserRunAction,
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:     "bucket-id",
+								Usage:    "Bucket ID",
+								Required: true,
+							},
+							&cli.StringFlag{
+								Name:     "token",
+								Usage:    "Token",
 								Required: true,
 							},
 						},
