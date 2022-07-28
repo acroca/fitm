@@ -9,6 +9,8 @@ import (
 	cli "github.com/urfave/cli/v2"
 )
 
+var version = "master"
+
 func assertErrorToNilf(message string, err error) {
 	if err != nil {
 		log.Fatalf(message, err)
@@ -245,6 +247,14 @@ func main() {
 							},
 						},
 					},
+				},
+			},
+			{
+				Name:  "version",
+				Usage: "prints out tool version.",
+				Action: func(ctx *cli.Context) error {
+					fmt.Printf(version)
+					return nil
 				},
 			},
 		},
