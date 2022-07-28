@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	fitm "github.com/acroca/fitm/pkg"
+	fitm "github.com/acroca/fitm/internal/cli"
 	"github.com/stretchr/testify/suite"
 )
 

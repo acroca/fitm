@@ -5,11 +5,15 @@ import (
 	"log"
 	"os"
 
-	fitm "github.com/acroca/fitm/pkg"
+	fitm "github.com/acroca/fitm/internal/cli"
 	cli "github.com/urfave/cli/v2"
 )
 
 var version = "master"
+
+func init() {
+	fitm.SetVersion(version)
+}
 
 func assertErrorToNilf(message string, err error) {
 	if err != nil {
@@ -32,17 +36,20 @@ func main() {
 				Name:    "init",
 				Aliases: []string{"i"},
 				Usage:   "Initialises fitm to be ready to start.",
+				Before:  fitm.CheckVersionAction,
 				Action:  fitm.InitAction,
 			},
 			{
 				Name:   "up",
 				Usage:  "runs the required components.",
 				Flags:  []cli.Flag{},
+				Before: fitm.CheckVersionAction,
 				Action: fitm.UpAction,
 			},
 			{
 				Name:   "down",
 				Usage:  "stops all components.",
+				Before: fitm.CheckVersionAction,
 				Action: fitm.DownAction,
 			},
 			{
@@ -64,6 +71,7 @@ func main() {
 					},
 				},
 
+				Before: fitm.CheckVersionAction,
 				Subcommands: []*cli.Command{
 					{
 						Name:   "list",
@@ -115,6 +123,7 @@ func main() {
 					},
 				},
 
+				Before: fitm.CheckVersionAction,
 				Subcommands: []*cli.Command{
 					{
 						Name:   "list",
@@ -183,6 +192,7 @@ func main() {
 					},
 				},
 
+				Before: fitm.CheckVersionAction,
 				Subcommands: []*cli.Command{
 					{
 						Name:   "grant",
@@ -224,6 +234,7 @@ func main() {
 				Name:  "browser",
 				Usage: "Browser operations.",
 
+				Before: fitm.CheckVersionAction,
 				Subcommands: []*cli.Command{
 					{
 						Name:   "install",
@@ -250,12 +261,15 @@ func main() {
 				},
 			},
 			{
-				Name:  "version",
-				Usage: "prints out tool version.",
-				Action: func(ctx *cli.Context) error {
-					fmt.Printf(version)
-					return nil
-				},
+				Name:  "update",
+				Usage: "self-update this tool.",
+
+				Action: fitm.UpdateAction,
+			},
+			{
+				Name:   "version",
+				Usage:  "prints out tool version.",
+				Action: fitm.VersionAction,
 			},
 		},
 	}
