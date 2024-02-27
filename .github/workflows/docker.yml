@@ -28,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: acroca/fitm-proxy
+          images: acroca/fitm
 
       -
         name: Build and push Docker image
