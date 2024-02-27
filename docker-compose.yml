@@ -1,0 +1,13 @@
+services:
+  proxy:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      MITMPROXY_CONFDIR: /.mitmproxy
+    volumes:
+      - mitmproxy:/.mitmproxy
+      - cookies:/cookies
+volumes:
+  mitmproxy:
+  cookies:
